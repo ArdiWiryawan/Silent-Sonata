@@ -1,0 +1,2060 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Silent Sonata - Final Release</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap");
+
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background-color: #050914;
+        color: #e2e8f0;
+        font-family: "Inter", sans-serif;
+        user-select: none;
+      }
+
+      .font-serif {
+        font-family: "Playfair Display", serif;
+      }
+
+      #game-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+      }
+
+      #ui-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 10;
+        pointer-events: none;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .pointer-events-auto {
+        pointer-events: auto;
+      }
+      .fade-in {
+        animation: fadeIn 2s ease-in-out forwards;
+      }
+      .fade-out {
+        animation: fadeOut 1s ease-in-out forwards;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      @keyframes fadeOut {
+        from {
+          opacity: 1;
+        }
+        to {
+          opacity: 0;
+          display: none;
+        }
+      }
+
+      .text-glow {
+        text-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+      }
+
+      #click-blocker {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 5;
+        display: none;
+      }
+
+      .menu-btn {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        background-color: rgba(17, 24, 39, 0.8);
+        color: #d1d5db;
+        border-radius: 0.25rem;
+        text-align: left;
+        transition: all 0.3s;
+        border: 1px solid #374151;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        backdrop-filter: blur(4px);
+      }
+      .menu-btn:hover:not(:disabled) {
+        background-color: rgba(55, 65, 81, 0.9);
+        color: #ffffff;
+        border-color: #4b5563;
+        cursor: pointer;
+      }
+      .menu-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        border-color: #1f2937;
+      }
+
+      #corruption-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(
+          circle,
+          transparent 50%,
+          rgba(90, 10, 40, 0) 100%
+        );
+        z-index: 2;
+        pointer-events: none;
+        transition: background 1s ease-in-out;
+      }
+
+      @keyframes shake {
+        0%,
+        100% {
+          transform: translate(0, 0) rotate(0deg);
+        }
+        10%,
+        30%,
+        50%,
+        70%,
+        90% {
+          transform: translate(-2px, -2px) rotate(-1deg);
+        }
+        20%,
+        40%,
+        60%,
+        80% {
+          transform: translate(2px, 2px) rotate(1deg);
+        }
+      }
+      .shake-active {
+        animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+      }
+
+      #cutscene-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 20;
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        background-color: rgba(5, 9, 20, 0.95);
+        pointer-events: none;
+        transition: opacity 1.5s ease-in-out;
+      }
+
+      .illustration-container svg {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        drop-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game-container"></div>
+    <div id="corruption-overlay"></div>
+    <div id="click-blocker"></div>
+
+    <!-- Cutscene Overlay -->
+    <div id="cutscene-layer">
+      <h2
+        id="cutscene-title"
+        class="font-serif text-5xl md:text-6xl text-white text-glow mb-4 opacity-0 transition-opacity duration-1000"
+      >
+        Chapter X
+      </h2>
+      <p
+        id="cutscene-subtitle"
+        class="text-gray-300 text-lg tracking-widest uppercase opacity-0 transition-opacity duration-1000 delay-500"
+      >
+        Subtitle
+      </p>
+    </div>
+
+    <!-- UI Overlay -->
+    <div id="ui-layer" class="p-8">
+      <div class="flex justify-between items-start opacity-0" id="hud-top">
+        <div class="tracking-widest text-sm uppercase text-gray-400">
+          <span id="chapter-label">Prologue</span> <br />
+          <span id="fragment-counter" class="text-white font-semibold"
+            >Sequence 0/0</span
+          >
+        </div>
+        <div class="flex gap-4 pointer-events-auto items-start">
+          <div
+            class="text-right tracking-widest text-xs uppercase text-gray-500 mr-4"
+          >
+            <span id="t-corruption">Korupsi Memori</span><br />
+            <span id="corruption-meter" class="text-white font-semibold text-sm"
+              >0/8</span
+            >
+          </div>
+          <button
+            id="btn-settings"
+            class="text-gray-400 hover:text-white transition-colors duration-300"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="12" r="3"></circle>
+              <path
+                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
+              ></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div
+        class="flex-grow flex flex-col items-center justify-center text-center"
+      >
+        <h2
+          id="subtitle-text"
+          class="font-serif text-3xl md:text-5xl mb-4 text-glow opacity-0 transition-opacity duration-1000"
+        >
+          ...
+        </h2>
+        <p
+          id="helper-text"
+          class="text-gray-400 max-w-lg mx-auto opacity-0 transition-opacity duration-500"
+        >
+          ...
+        </p>
+      </div>
+      <div class="opacity-0" id="hud-bottom">
+        <div
+          class="w-full max-w-md mx-auto h-1 bg-gray-800 rounded-full overflow-hidden"
+        >
+          <div
+            id="timing-bar"
+            class="h-full bg-white w-0 transition-all duration-[1500ms] ease-linear"
+          ></div>
+        </div>
+        <p
+          id="status-text"
+          class="text-center mt-4 text-sm tracking-widest uppercase text-gray-500"
+        >
+          Memori stabil.
+        </p>
+      </div>
+    </div>
+
+    <!-- Main Menu Overlay -->
+    <div
+      id="main-menu"
+      class="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-[#050914]/80 to-[#050914] z-50 flex flex-col items-center justify-center pointer-events-auto"
+    >
+      <div class="absolute top-8 right-8">
+        <button
+          id="btn-lang-toggle"
+          class="px-4 py-2 bg-gray-800 text-white rounded text-sm hover:bg-gray-700 transition"
+        >
+          EN / ID
+        </button>
+      </div>
+      <h1 class="font-serif text-5xl md:text-7xl mb-2 tracking-wide text-glow">
+        Silent Sonata
+      </h1>
+      <p
+        id="t-menu-tagline"
+        class="text-gray-400 mb-12 tracking-widest uppercase text-sm text-glow"
+      >
+        Visi Menipu. Musik Berkata Jujur.
+      </p>
+
+      <div
+        class="max-w-xl text-center mb-12 p-6 border border-gray-800/50 rounded-lg bg-[#0a0f1c]/50 backdrop-blur-sm"
+      >
+        <h3
+          id="t-menu-warning-title"
+          class="text-red-300 text-sm uppercase tracking-widest mb-3 border-b border-gray-800 pb-2"
+        >
+          Peringatan Konten
+        </h3>
+        <p
+          id="t-menu-warning-desc"
+          class="text-sm text-gray-400 leading-relaxed"
+        >
+          Game ini mengeksplorasi tema koma, memori, dan trauma pasca-kecelakaan
+          secara simbolis. Tidak ada *jumpscare* atau kekerasan visual. Gunakan
+          **Headphone** dan percaya pada apa yang Anda dengar.
+        </p>
+      </div>
+
+      <div class="flex flex-col md:flex-row gap-4">
+        <button
+          id="btn-start"
+          class="px-8 py-3 bg-white text-black font-semibold tracking-wider uppercase text-sm rounded hover:bg-gray-200 transition-colors duration-300"
+        >
+          Mulai Pemulihan
+        </button>
+        <button
+          id="btn-select-stage"
+          class="px-8 py-3 bg-transparent text-white border border-gray-600 font-semibold tracking-wider uppercase text-sm rounded hover:bg-gray-800 transition-colors duration-300 backdrop-blur-sm"
+        >
+          Pilih Stage
+        </button>
+      </div>
+    </div>
+
+    <!-- Stage Select Modal -->
+    <div
+      id="stage-select-modal"
+      class="absolute top-0 left-0 w-full h-full bg-[#050914]/95 backdrop-blur-md z-50 hidden flex-col items-center justify-center pointer-events-auto"
+    >
+      <h2
+        id="t-stage-select-title"
+        class="font-serif text-3xl md:text-4xl mb-6 text-white text-glow"
+      >
+        Daftar Memori
+      </h2>
+      <div
+        id="stage-list-container"
+        class="space-y-3 w-full max-w-md mb-8 px-4"
+      >
+        <!-- Buttons dynamically generated -->
+      </div>
+      <button
+        id="btn-close-select"
+        class="px-6 py-2 bg-gray-800 text-white rounded hover:bg-gray-700 transition-colors"
+      >
+        Kembali
+      </button>
+    </div>
+
+    <!-- Narrative Completion Modal -->
+    <div
+      id="completion-modal"
+      class="absolute top-0 left-0 w-full h-full bg-black/95 backdrop-blur-md z-50 hidden flex-col items-center justify-center pointer-events-auto px-6"
+    >
+      <p
+        id="t-completion-subtitle"
+        class="text-gold-400 text-sm tracking-widest uppercase mb-2 text-yellow-500"
+      >
+        Fragmen Memori Terungkap
+      </p>
+      <h2
+        id="completion-title"
+        class="font-serif text-4xl mb-6 text-white text-glow text-center"
+      >
+        Judul Memori
+      </h2>
+
+      <div
+        class="flex flex-col md:flex-row max-w-4xl w-full items-center justify-center gap-8 mb-10 p-8 border border-gray-800 rounded-lg bg-[#0a0f1c]"
+      >
+        <!-- Illustration Box -->
+        <div
+          id="illustration-box"
+          class="illustration-container w-48 h-48 md:w-64 md:h-64 flex-shrink-0 bg-[#050914] rounded overflow-hidden border border-gray-700"
+        ></div>
+        <!-- Text Box -->
+        <div class="flex-grow text-center md:text-left">
+          <p
+            id="completion-msg"
+            class="text-gray-300 text-lg md:text-xl leading-relaxed font-serif italic"
+          >
+            "..."
+          </p>
+        </div>
+      </div>
+
+      <div class="flex flex-col sm:flex-row gap-4">
+        <button
+          id="btn-to-main"
+          class="px-6 py-3 bg-gray-800 text-white font-semibold uppercase text-sm rounded hover:bg-gray-700 transition-colors"
+        >
+          Menu Utama
+        </button>
+        <button
+          id="btn-next-stage"
+          class="px-8 py-3 bg-white text-black font-semibold uppercase text-sm rounded hover:bg-gray-200 transition-colors"
+        >
+          Lanjut
+        </button>
+      </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div
+      id="settings-modal"
+      class="absolute top-0 left-0 w-full h-full bg-black/80 backdrop-blur-sm z-50 hidden flex-col items-center justify-center pointer-events-auto"
+    >
+      <div
+        class="bg-[#0a0f1c] p-8 rounded-lg max-w-md w-full border border-gray-800"
+      >
+        <h2
+          id="t-settings-title"
+          class="font-serif text-2xl mb-6 text-white border-b border-gray-800 pb-4"
+        >
+          Pengaturan
+        </h2>
+        <div class="space-y-4 mb-8">
+          <div class="flex justify-between items-center">
+            <span id="t-set-assist" class="text-gray-300 text-sm"
+              >Reaction Assist</span
+            >
+            <input
+              type="checkbox"
+              id="toggle-assist"
+              class="toggle-checkbox"
+              checked
+            />
+          </div>
+          <div class="flex justify-between items-center">
+            <span id="t-set-ring" class="text-gray-300 text-sm"
+              >Visual Timing Ring</span
+            >
+            <input
+              type="checkbox"
+              id="toggle-timing"
+              class="toggle-checkbox"
+              checked
+            />
+          </div>
+          <div class="flex justify-between items-center">
+            <span id="t-set-mono" class="text-gray-300 text-sm"
+              >Mono Friendly Mode</span
+            >
+            <input type="checkbox" id="toggle-mono" class="toggle-checkbox" />
+          </div>
+        </div>
+        <button
+          id="btn-close-settings"
+          class="w-full px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700 transition-colors"
+        >
+          Tutup
+        </button>
+      </div>
+    </div>
+
+    <script>
+      /**
+       * SILENT SONATA - FINAL RELEASE
+       * Featuring: Progression Lock, Bilingual System, Illustrations, Polished Visuals & Audio
+       */
+
+      // --- I18N SYSTEM ---
+      const DICT = {
+        id: {
+          start: "Mulai Pemulihan",
+          select: "Pilih Stage",
+          tagline: "Visi Menipu. Musik Berkata Jujur.",
+          warnTitle: "Peringatan Konten",
+          warnDesc:
+            "Game ini mengeksplorasi tema koma, memori, dan trauma pasca-kecelakaan secara simbolis. Tidak ada jumpscare atau kekerasan visual. Gunakan Headphone.",
+          stageTitle: "Daftar Memori",
+          back: "Kembali",
+          close: "Tutup",
+          settings: "Pengaturan",
+          corruption: "Korupsi Memori",
+          stable: "Memori stabil.",
+          corrupting: "Korupsi meningkat.",
+          recovering: "Mencari kestabilan...",
+          wait: "Tunggu.",
+          waitDesc: "Dengarkan sebelum bertindak.",
+          tooFast: "Terlalu cepat.",
+          listen: "Dengarkan...",
+          listenDesc: "Tunggu aba-aba.",
+          clickNow: "KLIK SEKARANG",
+          clickDesc: "Pilih sumber suara.",
+          playSeq: "MAINKAN URUTAN",
+          playSeqDesc: "Ulangi melodi.",
+          silence: "DIAM",
+          silenceDesc: "Jangan sentuh apa pun.",
+          tooLong: "Waktu habis. Korupsi meningkat.",
+          failSeq: "Urutan salah. Memori pecah.",
+          failDir: "Salah arah. Percayalah pada telinga.",
+          failSilence: "Diam berarti jangan bertindak. Kepanikan menguasaimu.",
+          failEcho: "Terlalu lama. Keraguan mengambil alih.",
+          success: "Memori Pulih",
+          successDesc: "Satu nada kembali.",
+          harmony: "Harmoni menguat.",
+          listenTrue: "Dengarkan Kebenaran",
+          listenEcho: "Dengarkan Pantulan Cermin",
+          fixEcho: "PERBAIKI PANTULAN",
+          fixEchoDesc: "Perbaiki ilusi ini.",
+          revTitle: "Fragmen Memori Terungkap",
+          toMain: "Menu Utama",
+          next: "Lanjut Chapter Berikutnya",
+          toEpilogue: "Masuk Epilogue",
+          stages: [
+            "Prologue: 3 Nada Pertama",
+            "Chapter 1: Ruang Senyap",
+            "Chapter 2: Lorong Nada Palsu",
+            "Chapter 3: Konser Hancur",
+            "Chapter 4: Memori Kecelakaan",
+            "Chapter 5: Sonata Terakhir",
+            "Epilogue: Kebangkitan",
+          ],
+        },
+        en: {
+          start: "Begin Recovery",
+          select: "Select Stage",
+          tagline: "Vision Lies. Music Tells The Truth.",
+          warnTitle: "Content Warning",
+          warnDesc:
+            "This game explores themes of coma, memory, and post-accident trauma symbolically. No jumpscares or visual gore. Use Headphones.",
+          stageTitle: "Memory List",
+          back: "Back",
+          close: "Close",
+          settings: "Settings",
+          corruption: "Memory Corruption",
+          stable: "Memory stable.",
+          corrupting: "Corruption rising.",
+          recovering: "Seeking stability...",
+          wait: "Wait.",
+          waitDesc: "Listen before acting.",
+          tooFast: "Too fast.",
+          listen: "Listen...",
+          listenDesc: "Wait for the cue.",
+          clickNow: "CLICK NOW",
+          clickDesc: "Select the sound source.",
+          playSeq: "PLAY SEQUENCE",
+          playSeqDesc: "Repeat the melody.",
+          silence: "SILENCE",
+          silenceDesc: "Do not touch anything.",
+          tooLong: "Time's up. Corruption rises.",
+          failSeq: "Wrong sequence. Memory fractures.",
+          failDir: "Wrong direction. Trust your ears.",
+          failSilence: "Silence means no action. Panic overtakes.",
+          failEcho: "Too long. Doubt takes over.",
+          success: "Memory Restored",
+          successDesc: "One note returns.",
+          harmony: "Harmony strengthens.",
+          listenTrue: "Listen to the Truth",
+          listenEcho: "Listen to the Reflection",
+          fixEcho: "FIX REFLECTION",
+          fixEchoDesc: "Correct this illusion.",
+          revTitle: "Memory Fragment Revealed",
+          toMain: "Main Menu",
+          next: "Next Chapter",
+          toEpilogue: "Enter Epilogue",
+          stages: [
+            "Prologue: The First 3 Notes",
+            "Chapter 1: The Silent Room",
+            "Chapter 2: Hall of False Notes",
+            "Chapter 3: The Broken Concert",
+            "Chapter 4: The Accident Memory",
+            "Chapter 5: The Last Sonata",
+            "Epilogue: Awakening",
+          ],
+        },
+      };
+      let lang = "id";
+      function t(key, arrIdx = -1) {
+        if (arrIdx >= 0) return DICT[lang][key][arrIdx];
+        return DICT[lang][key];
+      }
+
+      const STORY = [
+        {
+          id: {
+            t: "The First Phrase",
+            m: '"Tiga nada telah pulih. Piano mulai mengingat motif pertama perjalanannya."',
+          },
+          en: {
+            t: "The First Phrase",
+            m: '"Three notes restored. The piano begins to remember its first motif."',
+          },
+        },
+        {
+          id: {
+            t: "Memori Ruang Piano",
+            m: '"Sebuah ruangan di rumah. Tiket konser tergeletak. Kamu ingat berada di atas panggung, tapi tidak ingat akhirnya."',
+          },
+          en: {
+            t: "Piano Room Memory",
+            m: '"A room at home. A concert ticket lies torn. You remember the stage, but not the ending."',
+          },
+        },
+        {
+          id: {
+            t: "Pesan Sang Mentor",
+            m: "\"Suara guru piano muncul: 'Jangan hanya mainkan nada benar. Mainkan nada jujur. Nada yang salah masih bisa membawamu pulang.'\"",
+          },
+          en: {
+            t: "The Mentor's Message",
+            m: "\"A teacher's voice echoes: 'Don't just play correct notes. Play honest ones. A wrong note can still guide you home.'\"",
+          },
+        },
+        {
+          id: {
+            t: "Konser Terakhir",
+            m: '"Tepuk tangan itu nyata. Konser itu bukan kegagalan. Ketakutan akan kesempurnaan membuatmu buta."',
+          },
+          en: {
+            t: "The Last Concert",
+            m: '"The applause was real. It wasn\'t a failure. The fear of perfection simply blinded you."',
+          },
+        },
+        {
+          id: {
+            t: "Memori Kecelakaan",
+            m: '"Itu hanya kecelakaan. Bukan hukuman. Kamu tidak perlu menghukum dirimu untuk sesuatu di luar kendali."',
+          },
+          en: {
+            t: "The Accident",
+            m: "\"It was just an accident. Not a punishment. You don't need to suffer for what you couldn't control.\"",
+          },
+        },
+        {
+          id: {
+            t: "Panggilan Pulang",
+            m: '"Keluargamu ada di ruang rumah sakit. Suara mereka bukan tekanan, melainkan panggilan agar kamu kembali."',
+          },
+          en: {
+            t: "The Call Home",
+            m: '"Your family is in the hospital room. Their voices aren\'t pressure, but a call to return."',
+          },
+        },
+        {
+          id: {
+            t: "Awakening",
+            m: '"Cahaya memenuhi pandangan. Tanganmu menggenggam tangan mereka. Nada terakhir Sonata memudar ke dunia nyata."',
+          },
+          en: {
+            t: "Awakening",
+            m: '"Light fills your vision. Your hand holds theirs. The final note of the Sonata fades into reality."',
+          },
+        },
+      ];
+
+      // --- INLINE SVGS FOR ILLUSTRATIONS ---
+      const SVGS = [
+        // Chap 0: Abstract Motif
+        `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="none" stroke="#E2C04B" stroke-width="2" opacity="0.8"/><path d="M30,60 L50,30 L70,60 Z" fill="none" stroke="#4B9CE2" stroke-width="2"/><circle cx="50" cy="50" r="10" fill="#E24B8C" opacity="0.6"/></svg>`,
+        // Chap 1: Room & Ticket
+        `<svg viewBox="0 0 100 100"><rect x="20" y="40" width="60" height="30" fill="none" stroke="#aaa" stroke-width="2"/><line x1="40" y1="40" x2="40" y2="70" stroke="#aaa" stroke-dasharray="2,2"/><path d="M20,20 L80,20" stroke="#E2C04B" stroke-width="1" opacity="0.5"/></svg>`,
+        // Chap 2: Mirror/Mentor
+        `<svg viewBox="0 0 100 100"><path d="M50,80 Q30,50 50,20 Q70,50 50,80" fill="none" stroke="#E24B8C" stroke-width="2"/><circle cx="50" cy="35" r="5" fill="#E2C04B"/></svg>`,
+        // Chap 3: Stage Spotlight
+        `<svg viewBox="0 0 100 100"><polygon points="50,10 20,90 80,90" fill="#E2C04B" opacity="0.15"/><ellipse cx="50" cy="90" rx="30" ry="5" fill="#E2C04B" opacity="0.5"/><rect x="40" y="70" width="20" height="20" fill="#111"/></svg>`,
+        // Chap 4: Headlights (Accident)
+        `<svg viewBox="0 0 100 100"><circle cx="30" cy="50" r="15" fill="#fff" opacity="0.8"/><circle cx="70" cy="50" r="15" fill="#fff" opacity="0.8"/><line x1="0" y1="50" x2="100" y2="50" stroke="#E24B8C" stroke-width="1" opacity="0.5"/></svg>`,
+        // Chap 5: Hospital Light
+        `<svg viewBox="0 0 100 100"><rect x="30" y="20" width="40" height="60" fill="none" stroke="#4B9CE2" stroke-width="2"/><line x1="50" y1="20" x2="50" y2="80" stroke="#4B9CE2" stroke-width="2"/><line x1="30" y1="50" x2="70" y2="50" stroke="#4B9CE2" stroke-width="2"/><circle cx="50" cy="50" r="10" fill="#E2C04B" opacity="0.8"/></svg>`,
+        // Chap 6: Awakening
+        `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="30" fill="#E2C04B" opacity="0.5"/><path d="M50,20 L50,0 M50,80 L50,100 M20,50 L0,50 M80,50 L100,50 M28,28 L14,14 M72,72 L86,86 M28,72 L14,86 M72,28 L86,14" stroke="#E2C04B" stroke-width="2" opacity="0.8"/></svg>`,
+      ];
+
+      const COLORS = {
+        blue: 0x4b9ce2,
+        rose: 0xe24b8c,
+        gold: 0xe2c04b,
+        bg: 0x050914,
+        piano: 0x111520,
+        pianoLight: 0xd4af37,
+        whiteHospital: 0xf0f4f8,
+      };
+      const AUDIO = {
+        low: { freq: 130.81, pan: -0.8, type: "triangle" },
+        mid: { freq: 329.63, pan: 0, type: "sine" },
+        high: { freq: 783.99, pan: 0.8, type: "sine" },
+      };
+
+      // --- AUDIO ENGINE (Polished with Dual Oscillators) ---
+      class AudioSystem {
+        constructor() {
+          this.ctx = null;
+          this.masterGain = null;
+          this.isMono = false;
+        }
+        init() {
+          if (this.ctx) return;
+          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+          this.masterGain = this.ctx.createGain();
+          this.masterGain.gain.value = 0.6;
+          this.masterGain.connect(this.ctx.destination);
+          this.playAmbience();
+        }
+
+        // Synth polish: Richer tones using layered oscillators
+        playTone(noteConfig, isDetuned = false) {
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const panner = this.ctx.createStereoPanner();
+          panner.pan.value = this.isMono ? 0 : noteConfig.pan;
+          panner.connect(this.masterGain);
+
+          const createOsc = (freqMulti, type, detune, volume) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = type;
+            let freq = noteConfig.freq * freqMulti;
+            if (isDetuned) freq *= 0.97; // Echo corrupt
+            osc.frequency.value = freq;
+            osc.detune.value = detune;
+
+            if (isDetuned) {
+              const lfo = this.ctx.createOscillator();
+              lfo.type = "sine";
+              lfo.frequency.value = 8;
+              const lfoGain = this.ctx.createGain();
+              lfoGain.gain.value = freq * 0.02;
+              lfo.connect(lfoGain);
+              lfoGain.connect(osc.frequency);
+              lfo.start(now);
+              lfo.stop(now + 2.5);
+            }
+
+            gain.gain.setValueAtTime(0, now);
+            // Custom envelopes based on frequency range
+            if (noteConfig.freq < 200) {
+              gain.gain.linearRampToValueAtTime(volume, now + 0.1);
+              gain.gain.exponentialRampToValueAtTime(0.01, now + 2.5);
+            } else if (noteConfig.freq > 500) {
+              gain.gain.linearRampToValueAtTime(volume * 0.5, now + 0.02);
+              gain.gain.exponentialRampToValueAtTime(0.01, now + 1.8);
+            } else {
+              gain.gain.linearRampToValueAtTime(volume * 0.8, now + 0.05);
+              gain.gain.exponentialRampToValueAtTime(0.01, now + 2.2);
+            }
+
+            osc.connect(gain);
+            gain.connect(panner);
+            osc.start(now);
+            osc.stop(now + 2.6);
+          };
+
+          // Layer 1: Sub/Base
+          createOsc(1, noteConfig.type, 0, 0.5);
+          // Layer 2: Chorus/Thickener (slightly detuned up)
+          createOsc(1, "sine", 10, 0.2);
+          // Layer 3: Overtone (octave higher, quiet)
+          createOsc(2, "sine", 0, 0.1);
+        }
+
+        playSilence() {
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(40, now);
+          gain.gain.setValueAtTime(0, now);
+          gain.gain.linearRampToValueAtTime(0.08, now + 0.5);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 2.0);
+          osc.connect(gain);
+          gain.connect(this.masterGain);
+          osc.start(now);
+          osc.stop(now + 2.5);
+        }
+
+        playHeartbeat(isStable) {
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.value = isStable ? 45 : 35;
+          gain.gain.setValueAtTime(0, now);
+          gain.gain.linearRampToValueAtTime(0.6, now + 0.1);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+          gain.gain.setValueAtTime(0, now + 0.4);
+          gain.gain.linearRampToValueAtTime(0.5, now + 0.5);
+          gain.gain.exponentialRampToValueAtTime(
+            0.01,
+            now + (isStable ? 0.9 : 0.7),
+          );
+          if (!isStable) {
+            const lfo = this.ctx.createOscillator();
+            lfo.frequency.value = 20;
+            const lfoGain = this.ctx.createGain();
+            lfoGain.gain.value = 15;
+            lfo.connect(lfoGain);
+            lfoGain.connect(osc.frequency);
+            lfo.start(now);
+            lfo.stop(now + 1.2);
+          }
+          osc.connect(gain);
+          gain.connect(this.masterGain);
+          osc.start(now);
+          osc.stop(now + 1.2);
+        }
+
+        playApplause(isTrueSupport) {
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const bufferSize = this.ctx.sampleRate * 2;
+          const buffer = this.ctx.createBuffer(
+            1,
+            bufferSize,
+            this.ctx.sampleRate,
+          );
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+          const noise = this.ctx.createBufferSource();
+          noise.buffer = buffer;
+          const filter = this.ctx.createBiquadFilter();
+          filter.type = isTrueSupport ? "bandpass" : "highpass";
+          filter.frequency.value = isTrueSupport ? 800 : 2500;
+          const gain = this.ctx.createGain();
+          gain.gain.setValueAtTime(0, now);
+          gain.gain.linearRampToValueAtTime(
+            isTrueSupport ? 0.1 : 0.25,
+            now + 0.3,
+          );
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 1.8);
+          noise.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.masterGain);
+          noise.start(now);
+        }
+
+        playWrong() {
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(65.41, now);
+          osc.frequency.exponentialRampToValueAtTime(30, now + 0.2);
+          gain.gain.setValueAtTime(0.4, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+          osc.connect(gain);
+          gain.connect(this.masterGain);
+          osc.start(now);
+          osc.stop(now + 0.5);
+        }
+
+        playSuccess() {
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const root = 261.63;
+          const freqs = [root, root * 1.25, root * 1.5, root * 1.889];
+          freqs.forEach((f, i) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = "sine";
+            osc.frequency.value = f;
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.15, now + 0.1 + i * 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 3.0);
+            osc.connect(gain);
+            gain.connect(this.masterGain);
+            osc.start(now);
+            osc.stop(now + 3.5);
+          });
+        }
+
+        playFinalArpeggio() {
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const freqs = [
+            130.81, 164.81, 196.0, 246.94, 261.63, 329.63, 392.0, 493.88,
+            523.25, 659.25, 783.99, 1046.5,
+          ];
+          freqs.forEach((f, i) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = "sine";
+            osc.frequency.value = f;
+            const startTime = now + i * 0.15;
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(0.2, startTime + 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + 4.0);
+            osc.connect(gain);
+            gain.connect(this.masterGain);
+            osc.start(startTime);
+            osc.stop(startTime + 4.5);
+          });
+        }
+
+        playAmbience() {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.value = 55;
+          gain.gain.value = 0.03;
+          osc.connect(gain);
+          gain.connect(this.masterGain);
+          osc.start();
+        }
+      }
+
+      // --- GRAPHICS ENGINE ---
+      class VisualSystem {
+        constructor() {
+          this.scene = new THREE.Scene();
+          this.scene.background = new THREE.Color(COLORS.bg);
+          this.scene.fog = new THREE.FogExp2(COLORS.bg, 0.05);
+          this.camera = new THREE.PerspectiveCamera(
+            60,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            100,
+          );
+          this.camera.position.set(0, 3, 8);
+          this.camera.lookAt(0, 1, 0);
+          this.renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: false,
+          });
+          this.renderer.setSize(window.innerWidth, window.innerHeight);
+          this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+          document
+            .getElementById("game-container")
+            .appendChild(this.renderer.domElement);
+
+          this.raycaster = new THREE.Raycaster();
+          this.mouse = new THREE.Vector2();
+          this.objects = {};
+          this.particles = [];
+          this.sheets = [];
+          this.clock = new THREE.Clock();
+          this.particleSpeedMult = 1.0;
+          this.particleDirection = "float";
+          this.shakeIntensity = 0;
+
+          // Menu Camera Animation
+          this.isMenu = true;
+          this.menuAngle = 0;
+
+          this.isCutscene = false;
+          this.cameraProgress = 0;
+          this.cutsceneStartPos = new THREE.Vector3();
+          this.cutsceneTargetPos = new THREE.Vector3(0, 3, 8);
+
+          this.setupScene();
+          window.addEventListener("resize", this.onWindowResize.bind(this));
+        }
+
+        setupScene() {
+          this.ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+          this.scene.add(this.ambientLight);
+
+          this.pianoGroup = new THREE.Group();
+          this.pianoMat = new THREE.MeshBasicMaterial({
+            color: COLORS.piano,
+            transition: "all 2s",
+          });
+          const pianoBase = new THREE.Mesh(
+            new THREE.BoxGeometry(6, 0.5, 2),
+            this.pianoMat,
+          );
+          this.pianoGroup.add(pianoBase);
+
+          const keyGeo = new THREE.BoxGeometry(0.15, 0.1, 0.8);
+          const keyMatWhite = new THREE.MeshBasicMaterial({ color: 0xeeeeee });
+          const keyMatBlack = new THREE.MeshBasicMaterial({ color: 0x111111 });
+          for (let i = 0; i < 30; i++) {
+            const isBlack = [1, 3, 4, 6, 8].includes(i % 12);
+            const key = new THREE.Mesh(
+              keyGeo,
+              isBlack ? keyMatBlack : keyMatWhite,
+            );
+            key.position.set(-2.8 + i * 0.19, 0.3, 0.5);
+            if (isBlack) {
+              key.position.y += 0.05;
+              key.position.z -= 0.2;
+              key.scale.set(0.6, 1, 0.6);
+            }
+            this.pianoGroup.add(key);
+          }
+          this.pianoGroup.position.y = -0.5;
+          this.scene.add(this.pianoGroup);
+
+          this.objects.low = this.createOrb(
+            "low",
+            COLORS.blue,
+            -3,
+            2,
+            0,
+            new THREE.SphereGeometry(0.6, 32, 32),
+          );
+          this.objects.mid = this.createOrb(
+            "mid",
+            COLORS.rose,
+            0,
+            2.5,
+            -1,
+            new THREE.OctahedronGeometry(0.5, 0),
+          );
+          this.objects.high = this.createOrb(
+            "high",
+            COLORS.gold,
+            3,
+            2,
+            0,
+            new THREE.TetrahedronGeometry(0.6, 0),
+          );
+
+          this.createParticles();
+          this.createSheetMusic();
+        }
+
+        createSheetMusic() {
+          const geo = new THREE.PlaneGeometry(0.5, 0.7);
+          const mat = new THREE.MeshBasicMaterial({
+            color: 0xaaaaaa,
+            transparent: true,
+            opacity: 0.15,
+            side: THREE.DoubleSide,
+          });
+          for (let i = 0; i < 20; i++) {
+            const sheet = new THREE.Mesh(geo, mat);
+            sheet.position.set(
+              (Math.random() - 0.5) * 20,
+              (Math.random() - 0.5) * 15,
+              (Math.random() - 0.5) * 10 - 2,
+            );
+            sheet.rotation.set(
+              Math.random() * Math.PI,
+              Math.random() * Math.PI,
+              Math.random() * Math.PI,
+            );
+            sheet.userData = {
+              rx: (Math.random() - 0.5) * 0.02,
+              ry: (Math.random() - 0.5) * 0.02,
+              speedY: Math.random() * 0.01 + 0.005,
+            };
+            this.scene.add(sheet);
+            this.sheets.push(sheet);
+          }
+        }
+
+        createOrb(id, color, x, y, z, geometry) {
+          const material = new THREE.MeshBasicMaterial({
+            color: color,
+            transparent: true,
+            opacity: 0.8,
+            wireframe: id === "high",
+          });
+          const mesh = new THREE.Mesh(geometry, material);
+          mesh.position.set(x, y, z);
+          mesh.userData = { id: id, baseColor: color, baseY: y };
+
+          // Enhanced Polish: Add Glow Sprite
+          const canvas = document.createElement("canvas");
+          canvas.width = 64;
+          canvas.height = 64;
+          const context = canvas.getContext("2d");
+          const gradient = context.createRadialGradient(32, 32, 0, 32, 32, 32);
+          gradient.addColorStop(0, "rgba(255,255,255,0.8)");
+          gradient.addColorStop(
+            0.2,
+            `rgba(${(color >> 16) & 255}, ${(color >> 8) & 255}, ${color & 255}, 0.5)`,
+          );
+          gradient.addColorStop(1, "rgba(0,0,0,0)");
+          context.fillStyle = gradient;
+          context.fillRect(0, 0, 64, 64);
+          const texture = new THREE.CanvasTexture(canvas);
+          const spriteMat = new THREE.SpriteMaterial({
+            map: texture,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+          });
+          const sprite = new THREE.Sprite(spriteMat);
+          sprite.scale.set(3, 3, 1);
+          mesh.add(sprite);
+
+          // Timing Ring
+          const ringGeo = new THREE.RingGeometry(0.8, 0.85, 32);
+          const ringMat = new THREE.MeshBasicMaterial({
+            color: color,
+            transparent: true,
+            opacity: 0,
+            side: THREE.DoubleSide,
+          });
+          const ring = new THREE.Mesh(ringGeo, ringMat);
+          mesh.add(ring);
+          mesh.userData.ring = ring;
+
+          this.scene.add(mesh);
+          return mesh;
+        }
+
+        createParticles() {
+          const geo = new THREE.BufferGeometry();
+          const count = 300;
+          const positions = new Float32Array(count * 3);
+          for (let i = 0; i < count * 3; i++)
+            positions[i] = (Math.random() - 0.5) * 40;
+          geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+          this.particleMat = new THREE.PointsMaterial({
+            size: 0.08,
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.3,
+          });
+          this.particleSystem = new THREE.Points(geo, this.particleMat);
+          this.scene.add(this.particleSystem);
+        }
+
+        setChapterTheme(chapter) {
+          let bgColor, pianoColor, lightIntensity, pSpeed, pDir, pColor;
+          switch (chapter) {
+            case 0:
+              bgColor = 0x050914;
+              pianoColor = COLORS.piano;
+              lightIntensity = 0.2;
+              pSpeed = 1.0;
+              pDir = "float";
+              pColor = 0xffffff;
+              break;
+            case 1:
+              bgColor = 0x07111a;
+              pianoColor = COLORS.piano;
+              lightIntensity = 0.3;
+              pSpeed = 1.0;
+              pDir = "float";
+              pColor = 0xadd8e6;
+              break;
+            case 2:
+              bgColor = 0x1a0b2e;
+              pianoColor = 0x221133;
+              lightIntensity = 0.4;
+              pSpeed = 1.5;
+              pDir = "float";
+              pColor = 0xe6e6fa;
+              break;
+            case 3:
+              bgColor = 0x2b0a0a;
+              pianoColor = 0x1a0505;
+              lightIntensity = 0.6;
+              pSpeed = 2.0;
+              pDir = "float";
+              pColor = 0xffa07a;
+              break;
+            case 4:
+              bgColor = 0x000000;
+              pianoColor = 0x000000;
+              lightIntensity = 0.1;
+              pSpeed = 25.0;
+              pDir = "streak";
+              pColor = 0xffffff;
+              break;
+            case 5:
+              bgColor = 0x2b2518;
+              pianoColor = COLORS.pianoLight;
+              lightIntensity = 0.8;
+              pSpeed = 2.0;
+              pDir = "rise";
+              pColor = 0xffd700;
+              break;
+            case 6:
+              bgColor = COLORS.whiteHospital;
+              pianoColor = 0xdddddd;
+              lightIntensity = 1.0;
+              pSpeed = 0.5;
+              pDir = "rise";
+              pColor = 0xffffff;
+              break;
+            default:
+              bgColor = 0x050914;
+              pianoColor = COLORS.piano;
+              lightIntensity = 0.2;
+              pSpeed = 1.0;
+              pDir = "float";
+              pColor = 0xffffff;
+          }
+          const colorObj = new THREE.Color(bgColor);
+          this.scene.background = colorObj;
+          this.scene.fog.color = colorObj;
+          this.ambientLight.intensity = lightIntensity;
+          this.pianoMat.color.setHex(pianoColor);
+          this.particleSpeedMult = pSpeed;
+          this.particleDirection = pDir;
+          this.particleMat.color.setHex(pColor);
+          if (this.sheets)
+            this.sheets.forEach(
+              (sheet) =>
+                (sheet.material.opacity =
+                  chapter === 6 ? 0.0 : chapter === 4 ? 0.05 : 0.15),
+            );
+        }
+
+        startCutsceneAnimation(chapter) {
+          this.isCutscene = true;
+          this.isMenu = false;
+          this.cameraProgress = 0;
+          switch (chapter) {
+            case 0:
+              this.cutsceneStartPos.set(0, 12, 1);
+              break;
+            case 1:
+              this.cutsceneStartPos.set(-8, 3, 8);
+              break;
+            case 2:
+              this.cutsceneStartPos.set(8, 3, 8);
+              break;
+            case 3:
+              this.cutsceneStartPos.set(0, 0.5, 4);
+              break;
+            case 4:
+              this.cutsceneStartPos.set(0, 6, -6);
+              break;
+            case 5:
+              this.cutsceneStartPos.set(0, 8, 12);
+              break;
+            case 6:
+              this.cutsceneStartPos.set(0, 1.5, 3);
+              break;
+            default:
+              this.cutsceneStartPos.set(0, 5, 10);
+          }
+          this.camera.position.copy(this.cutsceneStartPos);
+          this.camera.lookAt(0, 1, 0);
+        }
+
+        animateRing(objId) {
+          const obj = this.objects[objId];
+          if (!obj) return;
+          obj.userData.ring.scale.set(1, 1, 1);
+          obj.userData.ring.material.opacity = 0.8;
+          obj.userData.ringActive = true;
+          setTimeout(() => {
+            obj.userData.ringActive = false;
+          }, 1000);
+        }
+        triggerShake(intensity = 0.5) {
+          this.shakeIntensity = intensity;
+        }
+        onWindowResize() {
+          this.camera.aspect = window.innerWidth / window.innerHeight;
+          this.camera.updateProjectionMatrix();
+          this.renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        getIntersectedObject(clientX, clientY) {
+          this.mouse.x = (clientX / window.innerWidth) * 2 - 1;
+          this.mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+          this.raycaster.setFromCamera(this.mouse, this.camera);
+          const intersects = this.raycaster.intersectObjects(
+            Object.values(this.objects),
+          );
+          return intersects.length > 0
+            ? intersects[0].object.userData.id
+            : null;
+        }
+
+        render() {
+          const time = this.clock.getElapsedTime();
+
+          // Menu floating camera
+          if (this.isMenu) {
+            this.menuAngle += 0.002;
+            this.camera.position.x = Math.sin(this.menuAngle) * 10;
+            this.camera.position.z = Math.cos(this.menuAngle) * 10;
+            this.camera.position.y = 4 + Math.sin(this.menuAngle * 2) * 2;
+            this.camera.lookAt(0, 0, 0);
+          } else if (this.isCutscene) {
+            this.cameraProgress += 0.005;
+            if (this.cameraProgress >= 1) {
+              this.cameraProgress = 1;
+              this.isCutscene = false;
+            }
+            const ease = 1 - Math.pow(1 - this.cameraProgress, 3);
+            this.camera.position.lerpVectors(
+              this.cutsceneStartPos,
+              this.cutsceneTargetPos,
+              ease,
+            );
+            this.camera.lookAt(0, 1, 0);
+          }
+
+          if (this.shakeIntensity > 0) {
+            this.camera.position.x +=
+              (Math.random() - 0.5) * this.shakeIntensity;
+            this.camera.position.y +=
+              (Math.random() - 0.5) * this.shakeIntensity;
+            this.shakeIntensity -= 0.02;
+            if (this.shakeIntensity <= 0) {
+              this.shakeIntensity = 0;
+              if (!this.isMenu && !this.isCutscene)
+                this.camera.position.set(0, 3, 8);
+            }
+          }
+
+          Object.values(this.objects).forEach((obj, i) => {
+            obj.position.y = obj.userData.baseY + Math.sin(time * 2 + i) * 0.2;
+            obj.rotation.y += 0.01;
+            obj.rotation.z += 0.005;
+            if (obj.userData.ringActive) {
+              obj.userData.ring.scale.addScalar(0.02);
+              obj.userData.ring.material.opacity *= 0.9;
+            } else obj.userData.ring.material.opacity = 0;
+          });
+
+          if (this.particleSystem) {
+            if (this.particleDirection === "streak") {
+              this.particleSystem.rotation.y = time * this.particleSpeedMult;
+              this.particleSystem.position.y = 0;
+            } else if (this.particleDirection === "rise") {
+              this.particleSystem.rotation.y = time * 0.05;
+              this.particleSystem.position.y =
+                ((time * this.particleSpeedMult) % 20) - 10;
+            } else {
+              this.particleSystem.rotation.y =
+                time * 0.05 * this.particleSpeedMult;
+              this.particleSystem.position.y = 0;
+            }
+          }
+
+          this.sheets.forEach((sheet) => {
+            sheet.rotation.x += sheet.userData.rx * this.particleSpeedMult;
+            sheet.rotation.y += sheet.userData.ry * this.particleSpeedMult;
+            if (this.particleDirection === "rise")
+              sheet.position.y += sheet.userData.speedY * 3;
+            else sheet.position.y += Math.sin(time + sheet.position.x) * 0.005;
+            if (sheet.position.y > 10) sheet.position.y = -10;
+          });
+
+          this.renderer.render(this.scene, this.camera);
+        }
+      }
+
+      // --- GAME CONTROLLER ---
+      class GameController {
+        constructor() {
+          this.audio = new AudioSystem();
+          this.visuals = new VisualSystem();
+          this.state = "MENU";
+          this.currentChapter = 0;
+          this.currentLevel = 1;
+          this.maxLevels = 5;
+          this.expectedInput = [];
+          this.currentInputSequence = [];
+          this.reactionWindowTime = 1800;
+          this.sequenceId = 0;
+          this.levelTimer = null;
+          this.inputTimer = null;
+          this.corruptionLevel = 0;
+          this.maxCorruption = 8;
+          this.unlockedStage = 0; // Progression Lock
+          this.settings = { assist: true, showRing: true };
+          this.nextChapterAction = null;
+
+          this.applyTranslations();
+          this.bindEvents();
+          this.startRenderLoop();
+        }
+
+        applyTranslations() {
+          document.getElementById("btn-start").innerText = t("start");
+          document.getElementById("btn-select-stage").innerText = t("select");
+          document.getElementById("t-menu-tagline").innerText = t("tagline");
+          document.getElementById("t-menu-warning-title").innerText =
+            t("warnTitle");
+          document.getElementById("t-menu-warning-desc").innerText =
+            t("warnDesc");
+          document.getElementById("t-stage-select-title").innerText =
+            t("stageTitle");
+          document.getElementById("btn-close-select").innerText = t("back");
+          document.getElementById("t-settings-title").innerText = t("settings");
+          document.getElementById("btn-close-settings").innerText = t("close");
+          document.getElementById("t-corruption").innerText = t("corruption");
+          document.getElementById("t-completion-subtitle").innerText =
+            t("revTitle");
+          document.getElementById("btn-to-main").innerText = t("toMain");
+          this.generateStageButtons();
+        }
+
+        generateStageButtons() {
+          const container = document.getElementById("stage-list-container");
+          container.innerHTML = "";
+          const stagesArr = t("stages");
+          for (let i = 0; i < stagesArr.length; i++) {
+            const btn = document.createElement("button");
+            const isLocked = i > this.unlockedStage;
+            btn.className = `menu-btn stage-btn ${i === 6 ? "border-yellow-600 text-yellow-500" : ""}`;
+            btn.setAttribute("data-stage", i);
+            btn.innerText = `${isLocked ? "🔒 " : ""}${stagesArr[i]}`;
+            if (isLocked) btn.disabled = true;
+            else btn.addEventListener("click", () => this.startGame(i));
+            container.appendChild(btn);
+          }
+        }
+
+        bindEvents() {
+          document
+            .getElementById("btn-lang-toggle")
+            .addEventListener("click", () => {
+              lang = lang === "id" ? "en" : "id";
+              this.applyTranslations();
+            });
+          document
+            .getElementById("btn-start")
+            .addEventListener("click", () => this.startGame(0));
+          document
+            .getElementById("btn-select-stage")
+            .addEventListener("click", () => {
+              document.getElementById("main-menu").style.display = "none";
+              document.getElementById("stage-select-modal").style.display =
+                "flex";
+            });
+          document
+            .getElementById("btn-close-select")
+            .addEventListener("click", () => {
+              document.getElementById("stage-select-modal").style.display =
+                "none";
+              document.getElementById("main-menu").style.display = "flex";
+            });
+          document
+            .getElementById("btn-to-main")
+            .addEventListener("click", () => {
+              document.getElementById("completion-modal").style.display =
+                "none";
+              this.returnToMainMenu();
+            });
+          document
+            .getElementById("btn-next-stage")
+            .addEventListener("click", () => {
+              document.getElementById("completion-modal").style.display =
+                "none";
+              if (this.nextChapterAction) this.nextChapterAction();
+            });
+
+          window.addEventListener("mousedown", (e) => this.handleClick(e));
+          window.addEventListener("touchstart", (e) => {
+            if (e.touches.length > 0) this.handleClick(e.touches[0]);
+          });
+
+          document
+            .getElementById("btn-settings")
+            .addEventListener("click", () => {
+              document.getElementById("settings-modal").style.display = "flex";
+            });
+          document
+            .getElementById("btn-close-settings")
+            .addEventListener("click", () => {
+              document.getElementById("settings-modal").style.display = "none";
+              this.settings.assist =
+                document.getElementById("toggle-assist").checked;
+              this.settings.showRing =
+                document.getElementById("toggle-timing").checked;
+              this.audio.isMono =
+                document.getElementById("toggle-mono").checked;
+              this.reactionWindowTime = this.settings.assist ? 2200 : 1800;
+            });
+        }
+
+        startRenderLoop() {
+          this.visuals.renderer.setAnimationLoop(() => {
+            this.visuals.render();
+          });
+        }
+
+        returnToMainMenu() {
+          this.sequenceId++;
+          this.state = "MENU";
+          document.getElementById("hud-top").classList.remove("fade-in");
+          document.getElementById("hud-bottom").classList.remove("fade-in");
+          document.getElementById("click-blocker").style.display = "none";
+          this.visuals.isMenu = true;
+          this.visuals.setChapterTheme(0);
+          document.getElementById("main-menu").classList.remove("fade-out");
+          document.getElementById("main-menu").style.display = "flex";
+          this.generateStageButtons(); // Refresh locks
+        }
+
+        startGame(chapterId = 0) {
+          this.sequenceId++;
+          this.audio.init();
+          this.corruptionLevel = 0;
+          this.updateCorruptionUI();
+          document.getElementById("main-menu").classList.add("fade-out");
+          document.getElementById("stage-select-modal").style.display = "none";
+          document.getElementById("completion-modal").style.display = "none";
+          this.playCutscene(chapterId);
+        }
+
+        playCutscene(chapterId) {
+          this.state = "CUTSCENE";
+          document.getElementById("click-blocker").style.display = "block";
+          this.currentChapter = chapterId;
+          this.visuals.setChapterTheme(chapterId);
+          this.visuals.startCutsceneAnimation(chapterId);
+
+          const cTitles = t("stages");
+          const layer = document.getElementById("cutscene-layer");
+          document.getElementById("cutscene-title").innerText =
+            cTitles[chapterId].split(":")[0];
+          document.getElementById("cutscene-subtitle").innerText =
+            cTitles[chapterId].split(":")[1];
+
+          layer.style.display = "flex";
+          layer.style.opacity = "1";
+          setTimeout(() => {
+            document.getElementById("cutscene-title").style.opacity = "1";
+            document.getElementById("cutscene-subtitle").style.opacity = "1";
+          }, 100);
+          setTimeout(() => {
+            document.getElementById("cutscene-title").style.opacity = "0";
+            document.getElementById("cutscene-subtitle").style.opacity = "0";
+            layer.style.opacity = "0";
+            setTimeout(() => {
+              layer.style.display = "none";
+              document.getElementById("hud-top").classList.add("fade-in");
+              document.getElementById("hud-bottom").classList.add("fade-in");
+              this.startChapter(chapterId);
+            }, 1500);
+          }, 3500);
+        }
+
+        startChapter(chapterId) {
+          switch (chapterId) {
+            case 0:
+              this.maxLevels = 5;
+              this.startLevel(1);
+              break;
+            case 1:
+              this.maxLevels = 4;
+              this.startLevel(1);
+              break;
+            case 2:
+              this.maxLevels = 4;
+              this.startLevel(1);
+              break;
+            case 3:
+              this.maxLevels = 4;
+              this.startLevel(1);
+              break;
+            case 4:
+              this.maxLevels = 4;
+              this.startLevel(1);
+              break;
+            case 5:
+              this.maxLevels = 4;
+              this.startLevel(1);
+              break;
+            case 6:
+              this.maxLevels = 1;
+              this.startLevel(1);
+              break;
+            default:
+              this.startLevel(1);
+          }
+        }
+
+        updateUI(subtitle, helper, showTimingBar = false, customTime = 0) {
+          const subEl = document.getElementById("subtitle-text");
+          const helpEl = document.getElementById("helper-text");
+          const barEl = document.getElementById("timing-bar");
+          subEl.classList.remove("opacity-0");
+          subEl.innerText = subtitle;
+          helpEl.classList.remove("opacity-0");
+          helpEl.innerText = helper;
+          if (showTimingBar && this.settings.showRing) {
+            const time = customTime || this.reactionWindowTime;
+            barEl.style.transitionDuration = "0s";
+            barEl.style.width = "0%";
+            setTimeout(() => {
+              barEl.style.transitionDuration = time + "ms";
+              barEl.style.width = "100%";
+            }, 50);
+          } else {
+            barEl.style.transitionDuration = "0.5s";
+            barEl.style.width = "0%";
+          }
+        }
+
+        updateCorruptionUI() {
+          document.getElementById("corruption-meter").innerText =
+            `${this.corruptionLevel}/${this.maxCorruption}`;
+          document.getElementById("corruption-overlay").style.background =
+            `radial-gradient(circle, transparent 50%, rgba(150, 0, 50, ${(this.corruptionLevel / this.maxCorruption) * 0.4}) 100%)`;
+          if (this.corruptionLevel >= this.maxCorruption) {
+            this.corruptionLevel = 0;
+            this.updateCorruptionUI();
+            this.handleFail("Memori hancur sesaat.");
+          }
+        }
+
+        startLevel(levelNum) {
+          this.sequenceId++;
+          clearTimeout(this.inputTimer);
+          clearTimeout(this.levelTimer);
+          this.currentLevel = levelNum;
+          this.state = "INIT";
+          document.getElementById("click-blocker").style.display = "block";
+          document.getElementById("chapter-label").innerText = t(
+            "stages",
+            this.currentChapter,
+          ).split(":")[0];
+          document.getElementById("fragment-counter").innerText =
+            this.currentChapter === 6
+              ? "The End"
+              : `Sequence ${levelNum}/${this.maxLevels}`;
+
+          if (this.currentChapter === 0) this.routePrologue(levelNum);
+          else if (this.currentChapter === 1) this.routeCh1(levelNum);
+          else if (this.currentChapter === 2) this.routeCh2(levelNum);
+          else if (this.currentChapter === 3) this.routeCh3(levelNum);
+          else if (this.currentChapter === 4) this.routeCh4(levelNum);
+          else if (this.currentChapter === 5) this.routeCh5(levelNum);
+          else if (this.currentChapter === 6) this.routeEpilogue(levelNum);
+        }
+
+        routePrologue(l) {
+          if (l === 1) {
+            this.expectedInput = ["low"];
+            this.playSequence(["low"], "Breath of Blue");
+          } else if (l === 2) {
+            this.expectedInput = ["mid"];
+            this.playSequence(["mid"], "Rose in Silence");
+          } else if (l === 3) {
+            this.expectedInput = ["high"];
+            this.playSequence(["high"], "Gold Through the Dark");
+          } else if (l === 4) {
+            const t = ["low", "mid", "high"][Math.floor(Math.random() * 3)];
+            this.expectedInput = [t];
+            this.playSequence([t], "The Three Voices");
+          } else if (l === 5) {
+            this.expectedInput = ["low", "mid", "high"];
+            this.currentInputSequence = [];
+            this.playSequence(["low", "mid", "high"], "First Phrase", {
+              isSequence: true,
+            });
+          }
+        }
+        routeCh1(l) {
+          if (l === 1) {
+            this.expectedInput = ["mid"];
+            this.playSequence(["mid"], "The First Light");
+          } else if (l === 2) {
+            this.expectedInput = ["silence"];
+            this.playSequence(["silence"], "The Quiet Between", {
+              isSilence: true,
+            });
+          } else if (l === 3) {
+            this.expectedInput = ["low"];
+            this.playSequence(["low"], "The Beautiful Lie", { decoy: "high" });
+          } else if (l === 4) {
+            this.expectedInput = ["high"];
+            this.playSequence(["high"], "The Door of Sound", {
+              decoy: "mid",
+              reactionSpeed: 1200,
+            });
+          }
+        }
+        routeCh2(l) {
+          if (l === 1) {
+            this.expectedInput = ["mid"];
+            this.playEchoMechanic(["mid"], ["mid"], ["mid"], "Clean Echo");
+          } else if (l === 2) {
+            this.expectedInput = ["high"];
+            this.playEchoMechanic(
+              ["mid", "high"],
+              ["mid", "low-corrupt"],
+              ["high"],
+              "Wrong Reflection",
+            );
+          } else if (l === 3) {
+            this.expectedInput = ["low"];
+            this.playEchoMechanic(
+              ["low", "mid"],
+              ["high-corrupt", "mid"],
+              ["low"],
+              "Mirror Corridor",
+            );
+          } else if (l === 4) {
+            this.expectedInput = ["low", "mid", "high"];
+            this.currentInputSequence = [];
+            this.playEchoMechanic(
+              ["low", "mid", "high"],
+              ["low", "mid-corrupt", "high"],
+              ["low", "mid", "high"],
+              "The Note That Wasn't",
+            );
+          }
+        }
+        routeCh3(l) {
+          if (l === 1) {
+            this.expectedInput = ["mid", "low"];
+            this.currentInputSequence = [];
+            this.playSequence(["mid", "low"], "Stage Breath", {
+              isSequence: true,
+            });
+          } else if (l === 2) {
+            this.expectedInput = ["high"];
+            this.playSequence(["false-applause", "high"], "False Applause");
+          } else if (l === 3) {
+            this.expectedInput = ["low", "mid"];
+            this.currentInputSequence = [];
+            this.playSequence(
+              ["low", "true-applause", "mid"],
+              "Spotlight Tremor",
+              { isSequence: true, reactionSpeed: 1500 },
+            );
+          } else if (l === 4) {
+            this.expectedInput = ["high", "mid", "low"];
+            this.currentInputSequence = [];
+            this.playSequence(["high", "mid", "low"], "Broken Crescendo", {
+              isSequence: true,
+              decoy: "mid",
+            });
+          }
+        }
+        routeCh4(l) {
+          if (l === 1) {
+            this.expectedInput = ["low"];
+            this.playSequence(["heartbeat-stable"], "Pulse Line");
+          } else if (l === 2) {
+            this.expectedInput = ["silence"];
+            this.playSequence(
+              ["heartbeat-unstable", "silence"],
+              "Headlight Silence",
+              { isSilence: true },
+            );
+          } else if (l === 3) {
+            this.expectedInput = ["low"];
+            this.playSequence(
+              ["heartbeat-unstable", "heartbeat-stable"],
+              "Impact Pause",
+              { reactionSpeed: 2500 },
+            );
+          } else if (l === 4) {
+            this.expectedInput = ["low", "mid", "high"];
+            this.currentInputSequence = [];
+            this.playSequence(
+              ["heartbeat-stable", "low", "mid", "high"],
+              "The Breath After",
+              { isSequence: true },
+            );
+          }
+        }
+        routeCh5(l) {
+          if (l === 1) {
+            this.expectedInput = ["low", "mid", "high"];
+            this.currentInputSequence = [];
+            this.playSequence(["low", "mid", "high"], "Returning Motif", {
+              isSequence: true,
+            });
+          } else if (l === 2) {
+            this.expectedInput = ["mid", "high"];
+            this.currentInputSequence = [];
+            this.playEchoMechanic(
+              ["mid", "high"],
+              ["mid-corrupt", "high"],
+              ["mid", "high"],
+              "Harmony in Doubt",
+            );
+          } else if (l === 3) {
+            this.expectedInput = ["low"];
+            this.playSequence(["low"], "The False Door", { decoy: "high" });
+          } else if (l === 4) {
+            this.expectedInput = ["low", "mid", "high", "mid", "low", "high"];
+            this.currentInputSequence = [];
+            this.playSequence(
+              ["low", "mid", "high", "mid", "low", "high"],
+              "Final Awakening",
+              { isSequence: true, reactionSpeed: 4000 },
+            );
+          }
+        }
+        routeEpilogue(l) {
+          this.expectedInput = ["high"];
+          this.playSequence(["low", "mid", "high"], "Awakening", {
+            decoy: null,
+            reactionSpeed: 5000,
+          });
+        }
+
+        async playSequence(notes, title, options = {}) {
+          const mySeqId = this.sequenceId;
+          this.state = "LISTEN";
+          this.updateUI(title, t("listenDesc"));
+          for (let i = 0; i < notes.length; i++) {
+            await new Promise((r) => setTimeout(r, 1000));
+            if (this.sequenceId !== mySeqId) return;
+            const n = notes[i];
+            if (n === "silence") this.audio.playSilence();
+            else if (n === "true-applause") this.audio.playApplause(true);
+            else if (n === "false-applause") {
+              this.audio.playApplause(false);
+              this.visuals.animateRing("high");
+            } else if (n === "heartbeat-stable") {
+              this.audio.playHeartbeat(true);
+              this.visuals.animateRing("low");
+            } else if (n === "heartbeat-unstable") {
+              this.audio.playHeartbeat(false);
+              this.visuals.animateRing("high");
+              this.visuals.animateRing("mid");
+            } else {
+              this.audio.playTone(AUDIO[n]);
+              if (options.decoy) this.visuals.animateRing(options.decoy);
+              else this.visuals.animateRing(n);
+            }
+          }
+          await new Promise((r) => setTimeout(r, 1500));
+          if (this.sequenceId !== mySeqId) return;
+          this.state = "CLICK_NOW";
+          document.getElementById("click-blocker").style.display = "none";
+          let pSub = t("clickNow");
+          let pHelp = t("clickDesc");
+          if (options.isSequence) {
+            pSub = t("playSeq");
+            pHelp = t("playSeqDesc");
+          } else if (options.isSilence) {
+            pSub = t("silence");
+            pHelp = t("silenceDesc");
+          }
+          let currentWindow = options.reactionSpeed || this.reactionWindowTime;
+          if (options.isSequence) currentWindow += notes.length * 800;
+          this.updateUI(pSub, pHelp, true, currentWindow);
+          this.inputTimer = setTimeout(() => {
+            if (this.state === "CLICK_NOW") {
+              if (options.isSilence) this.handleSuccess();
+              else this.handleFail(t("tooLong"));
+            }
+          }, currentWindow);
+        }
+
+        async playEchoMechanic(original, echo, expected, title, options = {}) {
+          const mySeqId = this.sequenceId;
+          this.state = "LISTEN";
+          this.updateUI(title, t("listenTrue"));
+          for (let i = 0; i < original.length; i++) {
+            await new Promise((r) => setTimeout(r, 1000));
+            if (this.sequenceId !== mySeqId) return;
+            this.audio.playTone(AUDIO[original[i]]);
+            this.visuals.animateRing(original[i]);
+          }
+          await new Promise((r) => setTimeout(r, 1500));
+          if (this.sequenceId !== mySeqId) return;
+          this.updateUI(title, t("listenEcho"));
+          for (let i = 0; i < echo.length; i++) {
+            await new Promise((r) => setTimeout(r, 1000));
+            if (this.sequenceId !== mySeqId) return;
+            if (echo[i].includes("-corrupt")) {
+              const baseNote = echo[i].split("-")[0];
+              this.audio.playTone(AUDIO[baseNote], true);
+              this.visuals.animateRing(baseNote);
+            } else {
+              this.audio.playTone(AUDIO[echo[i]]);
+              this.visuals.animateRing(echo[i]);
+            }
+          }
+          await new Promise((r) => setTimeout(r, 1500));
+          if (this.sequenceId !== mySeqId) return;
+          this.state = "CLICK_NOW";
+          document.getElementById("click-blocker").style.display = "none";
+          let pSub = expected.length > 1 ? t("playSeq") : t("fixEcho");
+          let currentWindow = options.reactionSpeed || this.reactionWindowTime;
+          if (expected.length > 1) currentWindow += expected.length * 800;
+          this.updateUI(pSub, t("fixEchoDesc"), true, currentWindow);
+          this.inputTimer = setTimeout(() => {
+            if (this.state === "CLICK_NOW") this.handleFail(t("failEcho"));
+          }, currentWindow);
+        }
+
+        handleClick(e) {
+          if (this.state !== "CLICK_NOW") {
+            if (this.state === "LISTEN") {
+              this.sequenceId++;
+              this.audio.playWrong();
+              this.updateUI(t("wait"), t("waitDesc"));
+              document.getElementById("status-text").innerText = t("tooFast");
+              document
+                .getElementById("status-text")
+                .classList.add("text-red-400");
+              clearTimeout(this.levelTimer);
+              this.levelTimer = setTimeout(
+                () => this.startLevel(this.currentLevel),
+                2000,
+              );
+            }
+            return;
+          }
+          if (
+            e.target.closest("#ui-layer") &&
+            !e.target.closest("#game-container")
+          )
+            return;
+          if (this.expectedInput[0] === "silence") {
+            clearTimeout(this.inputTimer);
+            this.handleFail(t("failSilence"));
+            return;
+          }
+          const clickedObjId = this.visuals.getIntersectedObject(
+            e.clientX,
+            e.clientY,
+          );
+          if (clickedObjId) {
+            this.visuals.animateRing(clickedObjId);
+            this.audio.playTone(AUDIO[clickedObjId]);
+            if (this.expectedInput.length > 1) {
+              this.currentInputSequence.push(clickedObjId);
+              const cIdx = this.currentInputSequence.length - 1;
+              if (
+                this.currentInputSequence[cIdx] !== this.expectedInput[cIdx]
+              ) {
+                clearTimeout(this.inputTimer);
+                this.handleFail(t("failSeq"));
+              } else if (
+                this.currentInputSequence.length === this.expectedInput.length
+              ) {
+                clearTimeout(this.inputTimer);
+                this.handleSuccess();
+              }
+            } else {
+              clearTimeout(this.inputTimer);
+              if (clickedObjId === this.expectedInput[0]) this.handleSuccess();
+              else this.handleFail(t("failDir"));
+            }
+          }
+        }
+
+        handleFail(message) {
+          this.sequenceId++;
+          clearTimeout(this.levelTimer);
+          clearTimeout(this.inputTimer);
+          this.state = "RESULT";
+          document.getElementById("click-blocker").style.display = "block";
+          this.audio.playWrong();
+          this.corruptionLevel++;
+          this.updateCorruptionUI();
+          this.visuals.triggerShake(0.5);
+          document
+            .getElementById("game-container")
+            .classList.add("shake-active");
+          setTimeout(
+            () =>
+              document
+                .getElementById("game-container")
+                .classList.remove("shake-active"),
+            500,
+          );
+          this.updateUI("Napas.", message);
+          document.getElementById("status-text").innerText = t("corrupting");
+          document
+            .getElementById("status-text")
+            .classList.replace("text-gray-500", "text-red-400");
+          this.levelTimer = setTimeout(() => {
+            document
+              .getElementById("status-text")
+              .classList.replace("text-red-400", "text-gray-500");
+            document.getElementById("status-text").innerText = t("recovering");
+            this.startLevel(this.currentLevel);
+          }, 3000);
+        }
+
+        handleSuccess() {
+          this.sequenceId++;
+          clearTimeout(this.levelTimer);
+          clearTimeout(this.inputTimer);
+          this.state = "RESULT";
+          document.getElementById("click-blocker").style.display = "block";
+          if (this.corruptionLevel > 0) {
+            this.corruptionLevel--;
+            this.updateCorruptionUI();
+          }
+          setTimeout(() => {
+            this.audio.playSuccess();
+            this.updateUI(t("success"), t("successDesc"));
+            document.getElementById("status-text").innerText = t("harmony");
+            document
+              .getElementById("status-text")
+              .classList.replace("text-gray-500", "text-green-400");
+            this.levelTimer = setTimeout(() => {
+              document
+                .getElementById("status-text")
+                .classList.replace("text-green-400", "text-gray-500");
+              document.getElementById("status-text").innerText = t("stable");
+              if (this.currentLevel < this.maxLevels)
+                this.startLevel(this.currentLevel + 1);
+              else this.chapterComplete();
+            }, 3500);
+          }, 500);
+        }
+
+        chapterComplete() {
+          this.state = "DONE";
+          document.getElementById("click-blocker").style.display = "block";
+          if (this.currentChapter === 6) this.audio.playFinalArpeggio();
+          else this.audio.playSuccess();
+
+          // Unlock Next Stage logic
+          if (
+            this.currentChapter + 1 > this.unlockedStage &&
+            this.currentChapter < 6
+          ) {
+            this.unlockedStage = this.currentChapter + 1;
+          }
+
+          const m = STORY[this.currentChapter][lang];
+          setTimeout(() => {
+            this.showNarrativeMenu(
+              m.t,
+              m.m,
+              this.currentChapter < 6
+                ? () => {
+                    this.sequenceId++;
+                    this.playCutscene(this.currentChapter + 1);
+                  }
+                : null,
+            );
+          }, 2000);
+        }
+
+        showNarrativeMenu(title, message, nextChapterCallback) {
+          this.state = "DONE";
+          document.getElementById("click-blocker").style.display = "block";
+          document.getElementById("completion-title").innerText = title;
+          document.getElementById("completion-msg").innerText = message;
+
+          // Set the SVG Illustration
+          document.getElementById("illustration-box").innerHTML =
+            SVGS[this.currentChapter];
+
+          const nextBtn = document.getElementById("btn-next-stage");
+          if (nextChapterCallback) {
+            this.nextChapterAction = nextChapterCallback;
+            nextBtn.style.display = "block";
+            nextBtn.innerText =
+              this.currentChapter === 5 ? t("toEpilogue") : t("next");
+          } else {
+            this.nextChapterAction = null;
+            nextBtn.style.display = "none";
+          }
+
+          document.getElementById("hud-top").classList.remove("fade-in");
+          document.getElementById("hud-bottom").classList.remove("fade-in");
+          document.getElementById("completion-modal").style.display = "flex";
+        }
+      }
+
+      window.onload = () => {
+        const game = new GameController();
+      };
+    </script>
+  </body>
+</html>

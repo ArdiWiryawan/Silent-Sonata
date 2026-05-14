@@ -212,4 +212,3 @@ Beberapa pengembangan yang disarankan:
 ## Lisensi
 
 Lisensi belum ditentukan. Tambahkan file `LICENSE` sebelum distribusi publik atau rilis open-source.
-

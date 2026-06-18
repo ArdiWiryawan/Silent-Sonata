@@ -1,140 +1,85 @@
-# Silent Sonata
+# Silent Sonata 🎹
+> **An Atmospheric 3D Psychological Rhythm-Reaction Web Experience**
 
-## Indonesia
+[![Status](https://img.shields.io/badge/Status-Prototype-yellow?style=for-the-badge)](https://github.com/ArdiWiryawan/Silent-Sonata)
+[![Stack](https://img.shields.io/badge/Stack-Three.js_/_Web_Audio_API-blueviolet?style=for-the-badge&logo=javascript)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
+[![Demo](https://img.shields.io/badge/Live_Demo-Play_in_Browser-orange?style=for-the-badge&logo=github)](https://ArdiWiryawan.github.io/Silent-Sonata/)
 
-Silent Sonata adalah game web rhythm-reaction psikologis fantasi. Pemain membantu seorang pianis muda yang terjebak di dunia koma untuk memulihkan tiga nada inti dan menyusun kembali Final Sonata.
+Silent Sonata is an immersive psychological fantasy rhythm-reaction browser game. Designed around an auditory narrative, players guide a young pianist trapped inside a coma to recover three core musical notes and reconstruct the Final Sonata. 
 
-> Visi menipu. Musik berkata jujur.
-
-### Fitur Utama
-
-- Game browser single-file melalui `index.html`.
-- Visual 3D menggunakan Three.js.
-- Audio interaktif menggunakan Web Audio API.
-- Gameplay berbasis mendengar, mengingat, lalu memilih objek nada.
-- Tiga nada inti: Low, Mid, dan High.
-- Stage progression dari Prologue sampai Epilogue.
-- UI bilingual: Indonesia dan English.
-- Pengaturan bantu: assist timing, timing ring, dan mono audio.
-
-### Cara Menjalankan
-
-Buka langsung file:
-
-```text
-index.html
-```
-
-Atau jalankan local server:
-
-```bash
-python -m http.server 8000
-```
-
-Lalu buka:
-
-```text
-http://localhost:8000
-```
-
-Catatan: project ini memakai CDN untuk Tailwind CSS, Three.js, dan Google Fonts, jadi koneksi internet diperlukan.
-
-### Cara Bermain
-
-1. Dengarkan nada atau urutan nada.
-2. Tunggu instruksi muncul.
-3. Klik objek yang sesuai dengan suara.
-4. Jika diminta `DIAM`, jangan klik apa pun.
-5. Selesaikan stage untuk membuka chapter berikutnya.
-
-Disarankan memakai headphone agar arah suara Low, Mid, dan High lebih jelas.
-
-### Teknologi
-
-- HTML
-- CSS
-- JavaScript
-- Tailwind CSS
-- Three.js
-- Web Audio API
-
-### File Penting
-
-- `index.html` - file utama game.
-- `Silent_Sonata_Full_Game_Execution_Documentation_v2.0.md` - dokumentasi desain dan produksi lengkap.
-- `README.md` - ringkasan project.
-
-### Content Warning
-
-Game ini membahas tema koma, memori, tekanan performa, dan trauma pasca-kecelakaan secara simbolis. Tidak ada jumpscare atau kekerasan visual eksplisit.
+*“Vision lies. Music tells the truth.”*
 
 ---
 
-## English
+## 🌟 Key Features
 
-Silent Sonata is a psychological fantasy rhythm-reaction web game. The player helps a young pianist trapped in a coma world recover three core notes and rebuild the Final Sonata.
+### 🎧 1. Interactive Audio Synthesis
+- Built using the **Web Audio API** to generate real-time spatial audio notes (Low, Mid, High directions).
+- Auditory-based gameplay where players must listen, remember, and identify sound frequencies to proceed.
+- Fully integrated assist accessibility options, including mono audio mode and audio timing buffers.
 
-> Vision lies. Music tells the truth.
+### 🌐 2. Browser-Ready 3D Render
+- Real-time 3D environments rendered directly in the browser using **Three.js**.
+- Fluid interactive elements and visual reaction cues (timing rings, glow feedback) synced to musical notes.
+- Pure single-file architecture (`index.html`) loaded via fast CDN resources.
 
-### Key Features
+### 📜 3. Storytelling & Narrative Progression
+- Stage-by-stage progression from Prologue to Epilogue detailing the protagonist's sub-conscious recovery.
+- Bilingual interface (Indonesian and English) with customizable volume, assist timing overlays, and gameplay preferences.
 
-- Single-file browser game through `index.html`.
-- 3D visuals powered by Three.js.
-- Interactive audio powered by the Web Audio API.
-- Listen, remember, then select the correct sound object.
-- Three core notes: Low, Mid, and High.
-- Stage progression from Prologue to Epilogue.
-- Bilingual UI: Indonesian and English.
-- Assist options: assist timing, timing ring, and mono audio.
+---
 
-### How to Run
+## 🎨 Visual & Sound Philosophy
+- **Atmosphere**: Dark, moody, and melancholic fantasy theme reflecting trauma, recovery, and performance pressure.
+- **Auditory Clarity**: Headphones are highly recommended to differentiate spatial stereo locations of musical notes.
 
-Open this file directly:
+---
 
+## 🛠️ Tech Stack
+- **Graphics**: [Three.js](https://threejs.org/) (WebGL 3D engine)
+- **Audio**: Native [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
+- **Styling**: Tailwind CSS & Google Fonts (`Playfair Display` & `Inter`)
+- **Language**: Vanilla JavaScript (ES6)
+
+---
+
+## 📂 Project Structure
 ```text
-index.html
+Silent-Sonata/
+├── index.html                                            # Main game application file
+├── Silent_Sonata_Full_Game_Execution_Documentation.md    # Extensive GDD & technical specs
+├── assets/                                               # Game sprites & graphic assets
+└── README.md                                             # Project documentation
 ```
 
-Or run a local server:
+---
 
-```bash
-python -m http.server 8000
-```
+## 🚀 Running Locally
+Because this game utilizes external resources and media rendering, running a local HTTP server is recommended to bypass browser file origin (CORS) policy:
 
-Then open:
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/ArdiWiryawan/Silent-Sonata.git
+   cd Silent-Sonata
+   ```
+2. **Start a local development server:**
+   *Using Node.js:*
+   ```bash
+   npx serve .
+   ```
+   *Using Python:*
+   ```bash
+   python -m http.server 8000
+   ```
+3. Open `http://localhost:8000` or `http://localhost:3000` in your web browser.
 
-```text
-http://localhost:8000
-```
+---
 
-Note: this project uses CDN links for Tailwind CSS, Three.js, and Google Fonts, so an internet connection is required.
+## 🧠 Technical Learnings
+- **Audio Node Hooking**: Gained experience in chaining GainNodes, OscillatorNodes, and StereoPannerNodes to build interactive sound boards.
+- **3D Render Optimizations**: Integrated RequestAnimationFrame loops with Three.js camera controllers to maintain a consistent 60FPS refresh rate on web browers.
 
-### How to Play
+---
 
-1. Listen to the note or note sequence.
-2. Wait for the prompt.
-3. Click the object that matches the sound.
-4. If the prompt says `SILENCE`, do not click anything.
-5. Complete each stage to unlock the next chapter.
-
-Headphones are recommended so the Low, Mid, and High sound directions are easier to recognize.
-
-### Tech Stack
-
-- HTML
-- CSS
-- JavaScript
-- Tailwind CSS
-- Three.js
-- Web Audio API
-
-### Important Files
-
-- `index.html` - main game file.
-- `Silent_Sonata_Full_Game_Execution_Documentation_v2.0.md` - full design and production documentation.
-- `README.md` - project summary.
-
-### Content Warning
-
-This game symbolically explores coma, memory, performance pressure, and post-accident trauma. It contains no jumpscares or explicit visual violence.
-
+## 📄 License
+This project is open-source and licensed under the [MIT License](LICENSE).
